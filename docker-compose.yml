@@ -1,0 +1,41 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Public HTTPS URL (must match DOMAIN below), e.g. https://watchlist.example.com
+      - BASE_URL=${BASE_URL:?set BASE_URL in .env}
+      - SECRET_KEY=${SECRET_KEY:?set SECRET_KEY in .env}
+      - FERNET_KEY=${FERNET_KEY:?set FERNET_KEY in .env}
+      - COOKIE_SECURE=true
+      - DB_URL=sqlite:////data/app.db
+      - DATA_DIR=/data
+      - CACHE_DIR=/data/imgcache
+      - ROOM_TTL_HOURS=${ROOM_TTL_HOURS:-24}
+    volumes:
+      - app-data:/data
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Domain Caddy serves + auto-provisions TLS for. Use ":80" for plain HTTP
+      # (e.g. local testing) — then also set BASE_URL=http://<host>:80 and
+      # COOKIE_SECURE=false on the app service.
+      - DOMAIN=${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

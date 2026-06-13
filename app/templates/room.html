@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="room"
+     data-filter="all"
+     hx-get="/room/{{ slug }}/status"
+     hx-trigger="load, every 3s"
+     hx-include="#sig"
+     hx-swap="innerHTML">
+  <p>Loading room…</p>
+</div>
+{% endblock %}

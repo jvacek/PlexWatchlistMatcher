@@ -1,0 +1,47 @@
+/* Minimal scaffolding only — real design is handled separately. */
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #18181b;
+  color: #e4e4e7;
+}
+.site-header { padding: 1rem 1.5rem; border-bottom: 1px solid #2a2a30; }
+.site-header a { color: #fff; text-decoration: none; font-weight: 700; }
+#app { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+.btn {
+  display: inline-block; margin-top: 1rem; padding: .6rem 1.1rem;
+  background: #e5a00d; color: #18181b; border-radius: 6px;
+  text-decoration: none; font-weight: 600;
+}
+.hero { text-align: center; padding: 3rem 1rem; }
+.share { width: 100%; padding: .5rem; margin: .25rem 0 1rem;
+  background: #232329; color: #e4e4e7; border: 1px solid #3a3a42; border-radius: 6px; }
+.people { list-style: none; padding: 0; }
+.people li { display: flex; gap: .5rem; align-items: center; padding: .25rem 0; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #2a2a30; }
+.link-btn { background: none; border: none; color: #e5a00d; cursor: pointer; text-decoration: underline; font: inherit; padding: 0; }
+.pill { font-size: .75rem; padding: .1rem .5rem; border-radius: 999px; background: #3a3a42; }
+.pill-ready { background: #166534; color: #dcfce7; }
+.pill-fetching, .pill-pending { background: #854d0e; color: #fef9c3; }
+.pill-error { background: #7f1d1d; color: #fee2e2; }
+.hint { color: #a1a1aa; }
+.seg { display: inline-flex; gap: .25rem; margin: 1rem 0 .25rem; }
+.seg-btn { padding: .35rem .8rem; background: #232329; color: #e4e4e7; border: 1px solid #3a3a42; border-radius: 6px; cursor: pointer; font: inherit; }
+#room[data-filter="all"] .seg-btn[data-val="all"],
+#room[data-filter="movie"] .seg-btn[data-val="movie"],
+#room[data-filter="show"] .seg-btn[data-val="show"] { background: #e5a00d; color: #18181b; border-color: #e5a00d; }
+#room[data-filter="movie"] .card[data-type="show"],
+#room[data-filter="show"] .card[data-type="movie"] { display: none; }
+.who { display: flex; align-items: center; gap: .25rem; margin-top: .35rem; }
+.who .avatar { width: 22px; height: 22px; }
+.grid {
+  display: grid; gap: 1rem; margin: 1rem 0 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.card { margin: 0; background: #232329; border-radius: 8px; overflow: hidden; }
+.card img, .card .noposter { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
+.card .noposter { display: grid; place-items: center; color: #71717a; background: #2a2a30; }
+.card figcaption { padding: .5rem; font-size: .85rem; }
+.card small { display: block; margin-top: .25rem; color: #a1a1aa; }

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Linking your Plex account…</h1>
+  <div id="linking" hx-get="/auth/poll" hx-trigger="load, every 2s" hx-swap="innerHTML">
+    <p>Waiting for Plex…</p>
+  </div>
+</section>
+{% endblock %}

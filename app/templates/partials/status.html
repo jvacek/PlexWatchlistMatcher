@@ -1,0 +1,79 @@
+{% if state == "expired" %}
+  <section class="hero">
+    <h1>Room not found</h1>
+    <p>This room has expired or never existed.</p>
+    <a href="/" hx-boost="false" class="btn">Start a new comparison</a>
+  </section>
+{% else %}
+  <input type="hidden" id="sig" name="csig" value="{{ sig }}">
+  <section class="lobby">
+    <h2>Comparison room</h2>
+    <label>Share this link with friends:</label>
+    <input class="share" value="{{ share_url }}" readonly onclick="this.select()">
+
+    <ul class="people">
+      {% for p in participants %}
+        <li>
+          {% if p.plex_thumb %}
+            <img class="avatar" src="/img?room={{ slug }}&src={{ p.plex_thumb | urlencode }}"
+                 alt="{{ p.plex_username }}" loading="lazy">
+          {% endif %}
+          <span class="name">{{ p.plex_username }}</span>
+          <span class="pill pill-{{ p.status }}">{{ p.status }}</span>
+          {% if p.status == "error" and p.id == my_pid %}
+            <button class="link-btn" hx-post="/room/{{ slug }}/retry" hx-swap="none">retry</button>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% if not is_member %}
+      <a href="/auth/login?role=guest&room={{ slug }}" hx-boost="false" class="btn">Join with Plex</a>
+    {% endif %}
+  </section>
+
+  {% if results or previews %}
+    <div class="seg">
+      <button class="seg-btn" data-val="all"
+              onclick="document.getElementById('room').dataset.filter='all'">All</button>
+      <button class="seg-btn" data-val="movie"
+              onclick="document.getElementById('room').dataset.filter='movie'">Movies</button>
+      <button class="seg-btn" data-val="show"
+              onclick="document.getElementById('room').dataset.filter='show'">TV</button>
+    </div>
+  {% endif %}
+
+  {% if results %}
+    <section class="results">
+      <h2>Everyone wants ({{ results.intersection | length }})</h2>
+      {% if results.intersection %}
+        <div class="grid">
+          {% for r in results.intersection %}{% include "partials/card.html" %}{% endfor %}
+        </div>
+      {% else %}
+        <p>Nothing is on everyone's watchlist (yet).</p>
+      {% endif %}
+
+      {% if results.partials %}
+        <h2>Some of you want</h2>
+        <div class="grid">
+          {% for r in results.partials %}{% include "partials/card.html" %}{% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  {% elif previews %}
+    {% for pv in previews %}
+      <section class="results">
+        <h2>{{ pv.username }}'s watchlist ({{ pv.count }})</h2>
+        <div class="grid">
+          {% for r in pv.recs %}{% include "partials/card.html" %}{% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+    {% if ready_count < 2 %}
+      <p class="hint">Share the link above to invite friends — matches appear once someone else joins.</p>
+    {% endif %}
+  {% elif ready_count < 2 %}
+    <p class="hint">Loading your watchlist…</p>
+  {% endif %}
+{% endif %}

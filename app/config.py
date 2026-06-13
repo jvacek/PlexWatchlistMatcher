@@ -1,0 +1,37 @@
+"""Environment-driven settings. Sensible (insecure) defaults for local dev."""
+
+import os
+
+from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+
+load_dotenv()
+
+APP_PRODUCT = "Watchlist Compare"
+APP_VERSION = "0.1.0"
+
+# Absolute base URL of this app. Used to build the Plex OAuth forwardUrl, so it
+# must be reachable by the user's browser (e.g. http://localhost:8000 in dev).
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
+
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-change-me")
+DB_URL = os.getenv("DB_URL", "sqlite:///./data/app.db")
+DATA_DIR = os.getenv("DATA_DIR", "./data")
+CACHE_DIR = os.getenv("CACHE_DIR", "./data/imgcache")
+ROOM_TTL_HOURS = int(os.getenv("ROOM_TTL_HOURS", "24"))
+
+# Only send cookies over HTTPS in production. Off by default so localhost works.
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+
+# Key for encrypting Plex tokens at rest. If unset we generate an ephemeral one
+# (fine for dev — tokens just won't survive a restart). Set FERNET_KEY in prod.
+_fkey = os.getenv("FERNET_KEY") or Fernet.generate_key().decode()
+_fernet = Fernet(_fkey.encode())
+
+
+def encrypt(plaintext: str) -> str:
+    return _fernet.encrypt(plaintext.encode()).decode()
+
+
+def decrypt(ciphertext: str) -> str:
+    return _fernet.decrypt(ciphertext.encode()).decode()
