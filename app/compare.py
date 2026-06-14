@@ -1,45 +1,76 @@
 """Pure comparison logic over participants' watchlists. No I/O — easy to test.
 
-Each participant is a dict: {"id", "username", "thumb", "items": {guid: item}}
-where `item` is a plain dict with at least title/year/type/thumb/summary.
+Each participant is a dict:
+    {"id", "username", "thumb",
+     "items": {guid: item},                       # what they want (watchlist)
+     "watch": {guid: {"watched", "in_progress"}}}  # optional; what they've seen
+
+`watch` may include guids that aren't in `items` (Plex drops watched titles from
+the watchlist), so we can show "already seen by X" on someone else's pick.
 """
 
 
 def compare(participants: list[dict]) -> dict:
     total = len(participants)
-    by_guid: dict[str, dict] = {}
 
+    # Representative metadata per guid (titles/years are global), from whoever
+    # has it on their watchlist.
+    item_by_guid: dict[str, dict] = {}
     for p in participants:
         for guid, item in p["items"].items():
-            if not guid:
-                continue
-            entry = by_guid.setdefault(guid, {"item": item, "who": []})
-            entry["who"].append(p["id"])
-
-    username = {p["id"]: p.get("username") for p in participants}
-    thumb = {p["id"]: p.get("thumb") for p in participants}
+            if guid:
+                item_by_guid.setdefault(guid, item)
 
     intersection: list[dict] = []
     partials: list[dict] = []
-    for guid, entry in by_guid.items():
-        count = len(entry["who"])
+    singles: list[dict] = []
+    for guid, item in item_by_guid.items():
+        wants = [p["id"] for p in participants if guid in p["items"]]
+        people = []
+        seen_any = False
+        for p in participants:
+            w = (p.get("watch") or {}).get(guid, {})
+            watched = bool(w.get("watched"))
+            in_progress = bool(w.get("in_progress"))
+            seen_any = seen_any or watched or in_progress
+            if guid in p["items"] or watched or in_progress:
+                people.append(
+                    {
+                        "username": p.get("username"),
+                        "thumb": p.get("thumb"),
+                        "wants": guid in p["items"],
+                        "watched": watched,
+                        "in_progress": in_progress,
+                    }
+                )
+        count = len(wants)
         rec = {
             "guid": guid,
-            "item": entry["item"],
-            "who": entry["who"],
-            "who_users": [username.get(i) for i in entry["who"]],
-            "who_people": [
-                {"username": username.get(i), "thumb": thumb.get(i)} for i in entry["who"]
-            ],
+            "item": item,
+            "who": wants,
+            "who_users": [p.get("username") for p in participants if guid in p["items"]],
+            "people": people,
             "count": count,
             "total": total,
+            "seen_any": seen_any,
         }
         if total >= 2 and count == total:
             intersection.append(rec)
         elif count >= 2:
             partials.append(rec)
+        else:  # count == 1
+            singles.append(rec)
 
-    intersection.sort(key=lambda r: (r["item"].get("title") or "").lower())
-    partials.sort(key=lambda r: (-r["count"], (r["item"].get("title") or "").lower()))
+    def by_title(r):
+        return (r["item"].get("title") or "").lower()
 
-    return {"intersection": intersection, "partials": partials, "total": total}
+    intersection.sort(key=by_title)
+    partials.sort(key=lambda r: (-r["count"], by_title(r)))
+    singles.sort(key=by_title)
+
+    return {
+        "intersection": intersection,
+        "partials": partials,
+        "singles": singles,
+        "total": total,
+    }

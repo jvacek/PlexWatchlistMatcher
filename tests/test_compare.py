@@ -52,6 +52,20 @@ def test_partials_sorted_by_count_desc():
     assert [r["item"]["title"] for r in res["partials"]] == ["Warm"]
 
 
+def test_singles_are_wanted_by_exactly_one():
+    res = compare(
+        [
+            _p(1, "ann", m("g:shared", "Dune"), m("g:a", "Only Ann")),
+            _p(2, "bob", m("g:shared", "Dune"), m("g:b", "Only Bob")),
+        ]
+    )
+    single_titles = sorted(r["item"]["title"] for r in res["singles"])
+    assert single_titles == ["Only Ann", "Only Bob"]
+    assert all(r["count"] == 1 for r in res["singles"])
+    # The shared title is in intersection, not singles.
+    assert [r["item"]["title"] for r in res["intersection"]] == ["Dune"]
+
+
 def test_empty_guids_ignored():
     res = compare([_p(1, "a", m("", "Ghost")), _p(2, "b", m("", "Ghost"))])
     assert res["intersection"] == []

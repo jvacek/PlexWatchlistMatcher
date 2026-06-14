@@ -69,14 +69,20 @@ async def get_user(client_id: str, token: str) -> dict:
 
 
 def _normalize(meta: dict) -> dict:
+    """Fields available from the watchlist listing (no genres/director/summary)."""
     return {
         "guid": meta.get("guid"),
+        "rating_key": meta.get("ratingKey"),
         "title": meta.get("title"),
         "type": meta.get("type"),
         "year": meta.get("year"),
-        "summary": meta.get("summary"),
         "thumb": meta.get("thumb") or meta.get("art"),
         "rating": meta.get("rating"),
+        "audience_rating": meta.get("audienceRating"),
+        "content_rating": meta.get("contentRating"),
+        "duration": meta.get("duration"),
+        "studio": meta.get("studio"),
+        "tagline": meta.get("tagline"),
     }
 
 
@@ -111,6 +117,53 @@ async def fetch_watchlist(client_id: str, token: str) -> list[dict]:
             if not batch or start >= total:
                 break
     return [_normalize(m) for m in items]
+
+
+def _tags(meta: dict, key: str) -> list[str]:
+    return [t.get("tag") for t in meta.get(key, []) if t.get("tag")]
+
+
+async def fetch_details(
+    client_id: str, token: str, rating_keys: list[str]
+) -> dict[str, dict]:
+    """Batch-fetch per-item detail (genres, director, summary) for many items.
+
+    Plex lets us request many ratingKeys at once (comma-separated), so a few
+    hundred items become a handful of requests. Returns {ratingKey: {...}}.
+    """
+    out: dict[str, dict] = {}
+    batch = 20  # Plex silently truncates the multi-get response to 20 items
+    async with httpx.AsyncClient(timeout=30) as c:
+        for i in range(0, len(rating_keys), batch):
+            chunk = [k for k in rating_keys[i : i + batch] if k]
+            if not chunk:
+                continue
+            r = await c.get(
+                f"{DISCOVER}/library/metadata/{','.join(chunk)}",
+                params={"includeUserState": 1},  # adds viewCount/viewOffset per item
+                headers=_headers(client_id, token),
+            )
+            if r.status_code >= 400:
+                continue  # skip a bad batch rather than fail the whole fetch
+            for m in r.json().get("MediaContainer", {}).get("Metadata", []) or []:
+                out[m.get("ratingKey")] = {
+                    "summary": m.get("summary"),
+                    "genres": _tags(m, "Genre"),
+                    "director": _tags(m, "Director"),
+                    "view_count": m.get("viewCount"),
+                    "view_offset": m.get("viewOffset"),
+                }
+    return out
+
+
+async def add_to_watchlist(client_id: str, token: str, rating_key: str) -> bool:
+    async with httpx.AsyncClient(timeout=15) as c:
+        r = await c.put(
+            f"{DISCOVER}/actions/addToWatchlist",
+            params={"ratingKey": rating_key},
+            headers=_headers(client_id, token),
+        )
+        return r.status_code < 400
 
 
 async def fetch_image(client_id: str, token: str | None, src: str) -> tuple[bytes, str]:

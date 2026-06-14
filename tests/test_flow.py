@@ -68,9 +68,11 @@ def test_two_user_room_flow(respx_mock):
     r = guest.get("/auth/poll")
     assert r.headers["HX-Redirect"] == f"/room/{slug}"
 
-    # The shared title shows up under "Everyone wants".
+    # The shared title shows up under "Everyone wants"; solo titles under singles.
     r = host.get(f"/room/{slug}/status")
     assert r.status_code == 200
-    assert "Everyone wants (1)" in r.text
+    assert "Everyone wants" in r.text
     assert "Shared Movie" in r.text
-    assert "Only tok1" not in r.text  # solo titles aren't in the intersection
+    assert "Just one person wants" in r.text
+    assert "Only tok1" in r.text
+    assert "Only tok2" in r.text

@@ -36,9 +36,31 @@ class WatchlistItem(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     participant_id: int = Field(foreign_key="participant.id", index=True)
     plex_guid: str = Field(index=True)  # plex://... — the cross-account match key
+    rating_key: str | None = None  # Plex ratingKey, used to add to a watchlist
     title: str
     type: str | None = None
     year: int | None = None
     summary: str | None = None
     thumb: str | None = None
-    rating: float | None = None
+    rating: float | None = None  # critic rating (0-10)
+    audience_rating: float | None = None
+    content_rating: str | None = None
+    duration: int | None = None  # milliseconds
+    studio: str | None = None
+    tagline: str | None = None
+    genres: str | None = None  # '|'-separated
+    director: str | None = None  # '|'-separated
+    view_count: int | None = None  # >0 means this user has watched it
+    view_offset: int | None = None  # ms into the item; >0 means in progress
+
+
+class WatchState(SQLModel, table=True):
+    """A participant's watch state for an item that may NOT be on their own
+    watchlist (Plex drops watched items from the watchlist). Populated by a
+    cross-reference sync over every item in the room."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    participant_id: int = Field(foreign_key="participant.id", index=True)
+    rating_key: str = Field(index=True)
+    view_count: int = 0
+    view_offset: int = 0

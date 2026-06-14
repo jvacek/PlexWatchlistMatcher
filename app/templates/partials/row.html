@@ -1,0 +1,57 @@
+<li class="row" data-type="{{ r.item.type or '' }}"
+    data-genres="{{ r.item.genres | join('|') }}"
+    data-title="{{ (r.item.title or '') | lower }}"
+    data-year="{{ r.item.year or '' }}"
+    data-rating="{{ r.item.rating or '' }}"
+    data-audience="{{ r.item.audience_rating or '' }}"
+    data-want="{{ r.count or 0 }}"
+    data-seen="{{ 1 if (r.seen_any or r.item.watched or r.item.in_progress) else 0 }}">
+  <div class="poster">
+    {% if r.item.thumb %}
+      <img src="/img?room={{ slug }}&src={{ r.item.thumb | urlencode }}" alt="" loading="lazy">
+    {% endif %}
+  </div>
+  <div class="meta">
+    <div class="row-head">
+      <strong>{{ r.item.title }}</strong>{% if r.item.year %} <span class="year">({{ r.item.year }})</span>{% endif %}
+      {% if r.item.type %}<span class="badge">{{ r.item.type }}</span>{% endif %}
+    </div>
+    <div class="sub">
+      {% if r.item.rating %}<span title="critic rating">★ {{ r.item.rating }}</span>{% endif %}
+      {% if r.item.audience_rating %}<span title="audience rating">· 👥 {{ r.item.audience_rating }}</span>{% endif %}
+      {% if r.item.content_rating %}<span>· {{ r.item.content_rating }}</span>{% endif %}
+      {% if r.item.duration %}<span>· {{ r.item.duration // 60000 }} min</span>{% endif %}
+      {% if r.item.director %}<span>· Dir: {{ r.item.director | join(', ') }}</span>{% endif %}
+    </div>
+    {% if r.item.genres %}
+      <div class="genres">{% for g in r.item.genres %}<span class="tag">{{ g }}</span>{% endfor %}</div>
+    {% endif %}
+    {% if r.item.summary %}<p class="summary">{{ r.item.summary | truncate(280) }}</p>{% endif %}
+  </div>
+  <div class="side">
+    {% if r.people %}
+      <div class="who">
+        {% for w in r.people %}
+          {% if w.thumb %}
+            {% set label = w.username ~ (' — watched' if w.watched else (' — in progress' if w.in_progress else (' — wants it' if not w.wants else ''))) %}
+            <span class="who-av{% if w.watched %} seen{% elif w.in_progress %} partial{% endif %}{% if not w.wants %} seen-only{% endif %}"
+                  title="{{ label }}">
+              <img class="avatar" src="/img?room={{ slug }}&src={{ w.thumb | urlencode }}" alt="" loading="lazy">
+              {% if w.watched %}<span class="seen-badge">✓</span>{% elif w.in_progress %}<span class="seen-badge">◐</span>{% endif %}
+            </span>
+          {% endif %}
+        {% endfor %}
+        <small>{{ r.count }}/{{ r.total }}</small>
+      </div>
+    {% elif r.item.watched %}
+      <span class="watch-badge seen">✓ Watched</span>
+    {% elif r.item.in_progress %}
+      <span class="watch-badge partial">◐ In progress</span>
+    {% endif %}
+    {% if is_member and r.who is defined and my_pid not in r.who and r.item.rating_key %}
+      <button class="link-btn add-btn"
+              hx-post="/room/{{ slug }}/watchlist/add?rating_key={{ r.item.rating_key }}"
+              hx-swap="outerHTML">+ Watchlist</button>
+    {% endif %}
+  </div>
+</li>
