@@ -107,6 +107,23 @@
     }
   });
 
+  // Copy the share link. Delegated so it survives HTMX re-renders.
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".copy-btn");
+    if (!btn || !btn.closest("#room")) return;
+    const input = btn.parentElement.querySelector(".share");
+    if (!input || !navigator.clipboard) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+      btn.classList.add("copied");
+      btn.textContent = "Copied";
+      clearTimeout(btn._t);
+      btn._t = setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.textContent = "Copy";
+      }, 1600);
+    });
+  });
+
   // Re-apply whenever the room content is (re)rendered by HTMX.
   document.addEventListener("htmx:afterSwap", (e) => {
     if (e.target && e.target.id === "room") {

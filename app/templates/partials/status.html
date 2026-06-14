@@ -7,9 +7,12 @@
 {% else %}
   <input type="hidden" id="sig" name="csig" value="{{ sig }}">
   <section class="lobby">
-    <h2>Comparison room</h2>
-    <label>Share this link with friends:</label>
-    <input class="share" value="{{ share_url }}" readonly onclick="this.select()">
+    <h2 class="lobby-title">Your comparison room</h2>
+    <label>Share this link to invite friends</label>
+    <div class="share-row">
+      <input class="share" value="{{ share_url }}" readonly onclick="this.select()">
+      <button type="button" class="copy-btn">Copy</button>
+    </div>
 
     <ul class="people">
       {% for p in participants %}
@@ -63,7 +66,7 @@
 
   {% if results %}
     <section class="results">
-      <h2>Everyone wants (<span class="count">{{ results.intersection | length }}</span>)</h2>
+      <h2 class="marquee"><span class="sec-label">Everyone wants</span><span class="sec-count"><span class="count">{{ results.intersection | length }}</span></span></h2>
       {% if results.intersection %}
         <ul class="list">
           {% for r in results.intersection %}{% include "partials/row.html" %}{% endfor %}
@@ -73,14 +76,14 @@
       {% endif %}
 
       {% if results.partials %}
-        <h2>Some of you want (<span class="count">{{ results.partials | length }}</span>)</h2>
+        <h2><span class="sec-label">Some of you want</span><span class="sec-count"><span class="count">{{ results.partials | length }}</span></span></h2>
         <ul class="list">
           {% for r in results.partials %}{% include "partials/row.html" %}{% endfor %}
         </ul>
       {% endif %}
 
       {% if results.singles %}
-        <h2>Just one person wants (<span class="count">{{ results.singles | length }}</span>)</h2>
+        <h2><span class="sec-label">Just one person wants</span><span class="sec-count"><span class="count">{{ results.singles | length }}</span></span></h2>
         <ul class="list">
           {% for r in results.singles %}{% include "partials/row.html" %}{% endfor %}
         </ul>
@@ -89,7 +92,7 @@
   {% elif previews %}
     {% for pv in previews %}
       <section class="results">
-        <h2>{{ pv.username }}'s watchlist (<span class="count">{{ pv.count }}</span>)</h2>
+        <h2><span class="sec-label">{{ pv.username }}&rsquo;s watchlist</span><span class="sec-count"><span class="count">{{ pv.count }}</span></span></h2>
         <ul class="list">
           {% for r in pv.recs %}{% include "partials/row.html" %}{% endfor %}
         </ul>

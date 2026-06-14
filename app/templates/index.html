@@ -1,8 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero">
-  <h1>Compare Plex watchlists with friends</h1>
-  <p>Sign in with Plex, share the link, and see what everyone wants to watch together.</p>
+  <p class="eyebrow">Now showing</p>
+  <h1>The film everyone&rsquo;s already waiting for.</h1>
+  <p class="lede">Sign in with Plex, share one link, and watch your watchlists overlap. The titles on <em>everyone&rsquo;s</em> list rise to the top.</p>
   <a href="/auth/login?role=host" hx-boost="false" class="btn">Start comparing</a>
+
+  <ol class="how">
+    <li>
+      <span class="step-n">01</span>
+      <b>Sign in with Plex</b>
+      <p>One tap with your own Plex account. No new password, no app to install.</p>
+    </li>
+    <li>
+      <span class="step-n">02</span>
+      <b>Share the link</b>
+      <p>Send the room link to friends. They sign in with their own accounts.</p>
+    </li>
+    <li>
+      <span class="step-n">03</span>
+      <b>See the overlap</b>
+      <p>Everyone&rsquo;s shared picks float to the top &mdash; with posters, ratings, and who&rsquo;s in.</p>
+    </li>
+  </ol>
 </section>
 {% endblock %}
