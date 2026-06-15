@@ -47,6 +47,23 @@
   const toInt = (v) => (v == null || v === "" || isNaN(+v) ? null : Math.trunc(+v));
   const toFloat = (v) => (v == null || v === "" || isNaN(+v) ? null : +v);
   const tags = (arr) => (arr || []).map((t) => t.tag).filter(Boolean);
+  // Plex carries external IDs in a Guid[] of "scheme://id" strings, e.g.
+  // imdb://tt123, tmdb://movie/550, tvdb://121361. Pull out the bare id per
+  // service (last path segment for tmdb/tvdb, which may include a type prefix).
+  function externalIds(m) {
+    const out = { imdb_id: null, tmdb_id: null, tvdb_id: null };
+    for (const g of m.Guid || []) {
+      const v = g && g.id;
+      const i = v ? v.indexOf("://") : -1;
+      if (i < 0) continue;
+      const scheme = v.slice(0, i);
+      const id = v.slice(i + 3);
+      if (scheme === "imdb") out.imdb_id = id;
+      else if (scheme === "tmdb") out.tmdb_id = id.split("/").pop();
+      else if (scheme === "tvdb") out.tvdb_id = id.split("/").pop();
+    }
+    return out;
+  }
 
   async function postJSON(url, body) {
     const r = await fetch(url, {
@@ -74,6 +91,9 @@
       duration: toInt(m.duration),
       genres: [],
       director: [],
+      imdb_id: null,
+      tmdb_id: null,
+      tvdb_id: null,
       view_count: toInt(m.viewCount),
       view_offset: toInt(m.viewOffset),
     };
@@ -123,6 +143,7 @@
           director: tags(m.Director),
           view_count: toInt(m.viewCount),
           view_offset: toInt(m.viewOffset),
+          ...externalIds(m),
         };
       }
     }
@@ -234,6 +255,9 @@
           it.summary = d.summary;
           it.genres = d.genres;
           it.director = d.director;
+          it.imdb_id = d.imdb_id;
+          it.tmdb_id = d.tmdb_id;
+          it.tvdb_id = d.tvdb_id;
           if (d.view_count != null) it.view_count = d.view_count;
           if (d.view_offset != null) it.view_offset = d.view_offset;
         }

@@ -32,6 +32,9 @@ _WATCHLIST_ADDED_COLUMNS = {
     "duration": "INTEGER",
     "genres": "VARCHAR",
     "director": "VARCHAR",
+    "imdb_id": "VARCHAR",
+    "tmdb_id": "VARCHAR",
+    "tvdb_id": "VARCHAR",
     "view_count": "INTEGER",
     "view_offset": "INTEGER",
 }

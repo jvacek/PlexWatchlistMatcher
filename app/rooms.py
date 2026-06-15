@@ -9,6 +9,7 @@ session's membership for that room, so a browser can only write its own row.
 import logging
 import secrets
 from datetime import timedelta
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -104,6 +105,9 @@ class ItemIn(BaseModel):
     duration: int | None = None
     genres: list[str] = []
     director: list[str] = []
+    imdb_id: str | None = None
+    tmdb_id: str | None = None
+    tvdb_id: str | None = None
     view_count: int | None = None
     view_offset: int | None = None
 
@@ -225,6 +229,9 @@ async def upload_watchlist(
                 duration=it.duration,
                 genres="|".join(it.genres) or None,
                 director="|".join(it.director) or None,
+                imdb_id=it.imdb_id,
+                tmdb_id=it.tmdb_id,
+                tvdb_id=it.tvdb_id,
                 view_count=it.view_count,
                 view_offset=it.view_offset,
             )
@@ -326,10 +333,40 @@ async def set_status(
 # --- Room pages + status polling (server-rendered, unchanged behaviour) ------
 
 
+def _external_links(it: WatchlistItem) -> dict:
+    """Build IMDB/TMDB/TVDB URLs from the external IDs Plex gave us. TMDB and
+    TVDB segment by media kind, so a show's id points at a series page."""
+    kind = "tv" if it.type == "show" else "movie"
+    series = "series" if it.type == "show" else "movie"
+    return {
+        "imdb_url": f"https://www.imdb.com/title/{it.imdb_id}/" if it.imdb_id else None,
+        "tmdb_url": (
+            f"https://www.themoviedb.org/{kind}/{it.tmdb_id}" if it.tmdb_id else None
+        ),
+        "tvdb_url": (
+            f"https://thetvdb.com/dereferrer/{series}/{it.tvdb_id}"
+            if it.tvdb_id
+            else None
+        ),
+    }
+
+
+def _plex_url(it: WatchlistItem) -> str | None:
+    """Deep link that opens the title on Plex Discover. Keyed by ratingKey."""
+    if not it.rating_key:
+        return None
+    key = quote(f"/library/metadata/{it.rating_key}", safe="")
+    return (
+        "https://app.plex.tv/desktop/#!/provider/"
+        f"tv.plex.provider.discover/details?key={key}"
+    )
+
+
 def _item_dict(it: WatchlistItem) -> dict:
     return {
         "guid": it.plex_guid,
         "rating_key": it.rating_key,
+        "plex_url": _plex_url(it),
         "title": it.title,
         "type": it.type,
         "year": it.year,
@@ -343,6 +380,7 @@ def _item_dict(it: WatchlistItem) -> dict:
         "director": it.director.split("|") if it.director else [],
         "watched": (it.view_count or 0) > 0,
         "in_progress": (it.view_offset or 0) > 0 and (it.view_count or 0) == 0,
+        **_external_links(it),
     }
 
 

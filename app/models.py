@@ -46,6 +46,9 @@ class WatchlistItem(SQLModel, table=True):
     duration: int | None = None  # milliseconds
     genres: str | None = None  # '|'-separated
     director: str | None = None  # '|'-separated
+    imdb_id: str | None = None  # external IDs from Plex's Guid[] (e.g. tt0133093)
+    tmdb_id: str | None = None
+    tvdb_id: str | None = None
     view_count: int | None = None  # >0 means this user has watched it
     view_offset: int | None = None  # ms into the item; >0 means in progress
 

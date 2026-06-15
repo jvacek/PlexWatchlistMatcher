@@ -810,6 +810,18 @@ html.can-share .share-btn { display: inline-flex; }
   box-shadow: 0 0 0 1px var(--line-soft) inset;
 }
 
+.links { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: flex-end; }
+.links a {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  padding: .14rem .55rem;
+  border-radius: var(--r-pill);
+  color: var(--paper-dim);
+  text-decoration: none;
+  box-shadow: 0 0 0 1px var(--line-soft) inset;
+}
+.links a:hover { color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+
 .summary {
   font-size: .85rem;
   color: var(--paper-dim);
@@ -898,6 +910,8 @@ html.can-share .share-btn { display: inline-flex; }
   transition: background .15s ease, color .15s ease;
 }
 .add-btn:hover { background: var(--gold-haze); color: var(--gold-bright); }
+/* Pin "Open in Plex" to the bottom-right of the row's side column. */
+.plex-btn { margin-top: auto; }
 .added { color: var(--good); font-family: var(--font-mono); font-size: .74rem; white-space: nowrap; }
 .add-failed { color: var(--bad); font-family: var(--font-mono); font-size: .74rem; white-space: nowrap; }
 
