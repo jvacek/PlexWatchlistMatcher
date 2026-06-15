@@ -51,12 +51,43 @@ def _ensure_watchlist_columns() -> None:
         conn.commit()
 
 
+# Columns earlier releases created but the current code no longer reads or
+# writes. create_all never drops columns, so without this they'd linger forever
+# on existing databases (dev SQLite and prod Postgres). None are indexed, so a
+# plain DROP COLUMN is safe. Idempotent: harmless on a fresh DB that never had
+# them. Once every live database has booted past this, the block can be deleted.
+_DROPPED_COLUMNS = {
+    "room": ("match_mode", "status", "host_participant_id"),
+    "watchlistitem": ("studio", "tagline"),
+    "participant": ("token_enc",),  # legacy encrypted Plex token; never stored now
+}
+
+
+def _drop_dead_columns() -> None:
+    with engine.connect() as conn:
+        sqlite = engine.dialect.name == "sqlite"  # ≥3.35 supports DROP COLUMN
+        for table, columns in _DROPPED_COLUMNS.items():
+            if sqlite:
+                rows = conn.exec_driver_sql(f"PRAGMA table_info({table})").fetchall()
+                existing = {r[1] for r in rows}
+                for col in columns:
+                    if col in existing:
+                        conn.exec_driver_sql(f"ALTER TABLE {table} DROP COLUMN {col}")
+            else:
+                for col in columns:
+                    conn.exec_driver_sql(
+                        f"ALTER TABLE {table} DROP COLUMN IF EXISTS {col}"
+                    )
+        conn.commit()
+
+
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
     # SQLite-only: create_all won't add columns to an existing table. A fresh
     # Postgres database gets the full current schema from create_all directly.
     if engine.dialect.name == "sqlite":
         _ensure_watchlist_columns()
+    _drop_dead_columns()
 
 
 def get_session():
