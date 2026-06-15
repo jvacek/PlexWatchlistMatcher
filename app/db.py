@@ -53,12 +53,31 @@ def _ensure_watchlist_columns() -> None:
         conn.commit()
 
 
+def _drop_legacy_token_column() -> None:
+    """Pre-migration cleanup. The Plex token is no longer stored server-side, so
+    drop the old participant.token_enc column — and any encrypted tokens still in
+    it — from databases created before that change. create_all never removes
+    columns, so without this the column (and real tokens) would linger. Idempotent
+    and safe on a fresh DB, where the column was never created."""
+    with engine.connect() as conn:
+        if engine.dialect.name == "sqlite":
+            rows = conn.exec_driver_sql("PRAGMA table_info(participant)").fetchall()
+            if any(r[1] == "token_enc" for r in rows):  # SQLite ≥3.35 DROP COLUMN
+                conn.exec_driver_sql("ALTER TABLE participant DROP COLUMN token_enc")
+        else:
+            conn.exec_driver_sql(
+                "ALTER TABLE participant DROP COLUMN IF EXISTS token_enc"
+            )
+        conn.commit()
+
+
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
     # SQLite-only: create_all won't add columns to an existing table. A fresh
     # Postgres database gets the full current schema from create_all directly.
     if engine.dialect.name == "sqlite":
         _ensure_watchlist_columns()
+    _drop_legacy_token_column()
 
 
 def get_session():
