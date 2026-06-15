@@ -116,9 +116,17 @@ def load_logo(size: int) -> Image.Image:
             "(install it, e.g. `brew install imagemagick`)."
         )
     png = subprocess.run(
-        [magick, "-background", "none", str(LOGO_SVG),
-         "-resize", f"{size}x{size}", "png:-"],
-        check=True, capture_output=True,
+        [
+            magick,
+            "-background",
+            "none",
+            str(LOGO_SVG),
+            "-resize",
+            f"{size}x{size}",
+            "png:-",
+        ],
+        check=True,
+        capture_output=True,
     ).stdout
     return Image.open(io.BytesIO(png)).convert("RGBA")
 
