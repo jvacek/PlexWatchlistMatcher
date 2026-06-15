@@ -72,8 +72,6 @@
       audience_rating: toFloat(m.audienceRating),
       content_rating: m.contentRating || null,
       duration: toInt(m.duration),
-      studio: m.studio || null,
-      tagline: m.tagline || null,
       genres: [],
       director: [],
       view_count: toInt(m.viewCount),

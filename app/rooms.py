@@ -102,8 +102,6 @@ class ItemIn(BaseModel):
     audience_rating: float | None = None
     content_rating: str | None = None
     duration: int | None = None
-    studio: str | None = None
-    tagline: str | None = None
     genres: list[str] = []
     director: list[str] = []
     view_count: int | None = None
@@ -168,11 +166,6 @@ async def register(
     session.commit()
     session.refresh(participant)
 
-    if room.host_participant_id is None and role == "host":
-        room.host_participant_id = participant.id
-        session.add(room)
-        session.commit()
-
     members = sess.get("members", {})
     members[slug] = participant.id
     sess["members"] = members
@@ -230,8 +223,6 @@ async def upload_watchlist(
                 audience_rating=it.audience_rating,
                 content_rating=it.content_rating,
                 duration=it.duration,
-                studio=it.studio,
-                tagline=it.tagline,
                 genres="|".join(it.genres) or None,
                 director="|".join(it.director) or None,
                 view_count=it.view_count,
@@ -348,8 +339,6 @@ def _item_dict(it: WatchlistItem) -> dict:
         "audience_rating": it.audience_rating,
         "content_rating": it.content_rating,
         "duration": it.duration,
-        "studio": it.studio,
-        "tagline": it.tagline,
         "genres": it.genres.split("|") if it.genres else [],
         "director": it.director.split("|") if it.director else [],
         "watched": (it.view_count or 0) > 0,

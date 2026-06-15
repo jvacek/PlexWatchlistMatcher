@@ -14,9 +14,6 @@ class Room(SQLModel, table=True):
     id: str = Field(primary_key=True)  # short share slug
     created_at: datetime = Field(default_factory=utcnow)
     expires_at: datetime
-    match_mode: str = "intersection_partials"
-    host_participant_id: int | None = None
-    status: str = "open"
 
 
 class Participant(SQLModel, table=True):
@@ -47,8 +44,6 @@ class WatchlistItem(SQLModel, table=True):
     audience_rating: float | None = None
     content_rating: str | None = None
     duration: int | None = None  # milliseconds
-    studio: str | None = None
-    tagline: str | None = None
     genres: str | None = None  # '|'-separated
     director: str | None = None  # '|'-separated
     view_count: int | None = None  # >0 means this user has watched it
