@@ -353,9 +353,9 @@ a { color: var(--gold); text-underline-offset: 3px; }
   margin-bottom: var(--s2);
 }
 
-.share-row { display: flex; gap: var(--s2); margin-bottom: var(--s5); }
+.share-row { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s5); }
 .share {
-  flex: 1;
+  flex: 1 1 12rem;
   min-width: 0;
   padding: .7rem .9rem;
   font-family: var(--font-mono);
@@ -365,20 +365,36 @@ a { color: var(--gold); text-underline-offset: 3px; }
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   cursor: pointer;
+  transition: border-color .18s ease, box-shadow .2s ease, color .18s ease;
 }
 .share:focus { outline: none; border-color: var(--gold-deep); }
-.copy-btn {
+.share.flash {
+  border-color: var(--good-ring);
+  box-shadow: 0 0 0 1px var(--good-ring), 0 0 0 5px var(--good-bg);
+  color: var(--good);
+}
+
+/* Copy + Share buttons share a footprint. */
+.copy-btn, .share-btn {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
   padding: 0 1.1rem;
+  height: 2.6rem;
   font-family: var(--font-body);
   font-weight: 600;
   font-size: .85rem;
-  color: var(--gold);
-  background: transparent;
-  border: 1px solid var(--gold-deep);
   border-radius: var(--r-sm);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.copy-btn {
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--gold-deep);
   transition: background .18s ease, color .18s ease, border-color .18s ease;
 }
 .copy-btn:hover { background: var(--gold-haze); color: var(--gold-bright); }
@@ -386,7 +402,29 @@ a { color: var(--gold); text-underline-offset: 3px; }
   color: var(--good);
   border-color: var(--good-ring);
   background: var(--good-bg);
+  animation: pop .32s ease;
 }
+@keyframes pop { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.07); } }
+
+/* Native share — hidden unless the Web Share API exists (set by app.js). */
+.share-btn {
+  display: none;
+  font-weight: 700;
+  color: var(--ink-900);
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border: 1px solid var(--gold-deep);
+  box-shadow: 0 8px 20px -12px var(--gold-glow);
+  transition: filter .18s ease, transform .12s ease;
+}
+.share-btn::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%230c0b0d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 10.5V2'/%3E%3Cpath d='M5 5l3-3 3 3'/%3E%3Cpath d='M3.5 8.5V13a1 1 0 001 1h7a1 1 0 001-1V8.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.share-btn:hover { filter: brightness(1.06); }
+.share-btn:active { transform: translateY(1px); }
+html.can-share .share-btn { display: inline-flex; }
 
 .people { list-style: none; padding: 0; margin: 0 0 var(--s2); display: flex; flex-direction: column; gap: var(--s1); }
 .people li {

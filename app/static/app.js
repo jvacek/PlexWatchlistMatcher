@@ -107,21 +107,75 @@
     }
   });
 
-  // Copy the share link. Delegated so it survives HTMX re-renders.
+  // Reveal the native-share button only where the Web Share API exists
+  // (secure contexts: https or localhost — not plain-http on a LAN IP).
+  if (navigator.share) document.documentElement.classList.add("can-share");
+
+  // Copy with a fallback for non-secure contexts, where navigator.clipboard is
+  // undefined (e.g. http on a LAN IP). A readonly input can still be selected
+  // and copied via execCommand.
+  function copyText(input) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(input.value);
+    }
+    input.focus();
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    try {
+      return document.execCommand("copy")
+        ? Promise.resolve()
+        : Promise.reject(new Error("execCommand failed"));
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+
+  function flash(input) {
+    if (!input) return;
+    input.classList.add("flash");
+    clearTimeout(input._f);
+    input._f = setTimeout(() => input.classList.remove("flash"), 1100);
+  }
+
+  // Share / copy the room link. Delegated so it survives HTMX re-renders.
   document.addEventListener("click", (e) => {
+    const shareBtn = e.target.closest(".share-btn");
+    if (shareBtn && shareBtn.closest("#room")) {
+      const input = shareBtn.parentElement.querySelector(".share");
+      if (input && navigator.share) {
+        navigator
+          .share({
+            title: "Watchlist Compare",
+            text: "Compare our Plex watchlists — join my room:",
+            url: input.value,
+          })
+          .catch(() => {}); // sheet dismissed / cancelled — nothing to do
+      }
+      return;
+    }
+
     const btn = e.target.closest(".copy-btn");
     if (!btn || !btn.closest("#room")) return;
     const input = btn.parentElement.querySelector(".share");
-    if (!input || !navigator.clipboard) return;
-    navigator.clipboard.writeText(input.value).then(() => {
-      btn.classList.add("copied");
-      btn.textContent = "Copied";
-      clearTimeout(btn._t);
-      btn._t = setTimeout(() => {
-        btn.classList.remove("copied");
-        btn.textContent = "Copy";
-      }, 1600);
-    });
+    if (!input) return;
+    copyText(input).then(
+      () => {
+        btn.classList.add("copied");
+        btn.textContent = "✓ Copied!";
+        flash(input);
+        clearTimeout(btn._t);
+        btn._t = setTimeout(() => {
+          btn.classList.remove("copied");
+          btn.textContent = "Copy";
+        }, 1800);
+      },
+      () => {
+        // Last resort: select it and flash so the user can copy manually.
+        input.focus();
+        input.select();
+        flash(input);
+      }
+    );
   });
 
   // Re-apply whenever the room content is (re)rendered by HTMX.
