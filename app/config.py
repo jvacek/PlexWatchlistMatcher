@@ -16,12 +16,17 @@ APP_VERSION = "0.1.0"
 # cloud URL in prod); falls back to localhost for dev.
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
 
+# Shared database. On a multi-instance host (e.g. fastapi cloud) every instance
+# must point at the SAME database, or rooms created on one are invisible to the
+# others. Prefer DATABASE_URL (the name managed Postgres providers like Neon
+# expose) and fall back to a local SQLite file for single-instance dev.
+DB_URL = os.getenv("DATABASE_URL") or os.getenv("DB_URL") or "sqlite:///./data/app.db"
+
 # Signs session cookies. If unset we generate a random key on startup. That's
 # fine for a SINGLE ephemeral instance, but the key changes on every restart
 # (logging everyone out) and differs between processes — so set it in env when
 # running multiple workers/replicas, or to keep sessions across restarts.
 SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_urlsafe(48)
-DB_URL = os.getenv("DB_URL", "sqlite:///./data/app.db")
 DATA_DIR = os.getenv("DATA_DIR", "./data")
 CACHE_DIR = os.getenv("CACHE_DIR", "./data/imgcache")
 ROOM_TTL_HOURS = int(os.getenv("ROOM_TTL_HOURS", "24"))

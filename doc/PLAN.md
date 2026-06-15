@@ -1,4 +1,4 @@
-# Plex Watchlist Compare — Plan
+# Plex Watchlist Matcher — Plan
 
 ## Status (2026-06-14)
 

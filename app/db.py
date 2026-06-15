@@ -7,9 +7,20 @@ from sqlmodel import Session, SQLModel, create_engine
 from . import config
 from . import models  # noqa: F401  (import so tables register on metadata)
 
-Path(config.DATA_DIR).mkdir(parents=True, exist_ok=True)
+# Managed Postgres providers (Neon, Heroku, …) hand out postgres:// URLs; route
+# them through psycopg 3, which is the driver we install.
+_url = config.DB_URL
+for _prefix in ("postgresql://", "postgres://"):
+    if _url.startswith(_prefix):
+        _url = "postgresql+psycopg://" + _url[len(_prefix) :]
+        break
 
-engine = create_engine(config.DB_URL, connect_args={"check_same_thread": False})
+if _url.startswith("sqlite"):
+    Path(config.DATA_DIR).mkdir(parents=True, exist_ok=True)
+    engine = create_engine(_url, connect_args={"check_same_thread": False})
+else:
+    # pre_ping recycles connections Neon dropped while the instance was idle.
+    engine = create_engine(_url, pool_pre_ping=True)
 
 
 # Columns added to watchlistitem after its first release. SQLite create_all
@@ -44,7 +55,10 @@ def _ensure_watchlist_columns() -> None:
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
-    _ensure_watchlist_columns()
+    # SQLite-only: create_all won't add columns to an existing table. A fresh
+    # Postgres database gets the full current schema from create_all directly.
+    if engine.dialect.name == "sqlite":
+        _ensure_watchlist_columns()
 
 
 def get_session():

@@ -1,4 +1,4 @@
-# Frontend design brief — Watchlist Compare
+# Frontend design brief — Plex Watchlist Matcher
 
 Handoff for a dedicated design pass. The app is **feature-complete** (M0–M4);
 the current UI is functional but unstyled scaffolding. Your job is to make it
