@@ -798,7 +798,9 @@ html.can-share .share-btn { display: inline-flex; }
   gap: .4rem;
   align-items: center;
 }
-.sub span:first-child { color: var(--gold); }   /* critic ★ rating leads in gold */
+.sub .critic { color: var(--gold); }   /* critic ★ rating shown in gold, wherever it sits */
+/* Separator lives between siblings, so a missing leading field never strands a "·". */
+.sub > span + span::before { content: "· "; color: var(--muted); }
 
 .genres { margin-top: .5rem; display: flex; flex-wrap: wrap; gap: .3rem; }
 .tag {
