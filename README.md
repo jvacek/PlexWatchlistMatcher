@@ -14,15 +14,18 @@ it uses Plex's public PIN/OAuth flow. See `doc/PLAN.md` for the design and
 
 ```bash
 uv sync
-cp .env.example .env        # then fill SECRET_KEY and FERNET_KEY (commands below)
+cp .env.example .env        # SECRET_KEY/FERNET_KEY optional locally (see below)
 uv run uvicorn app.main:app --reload
 ```
 
-Generate the secrets:
+`SECRET_KEY` and `FERNET_KEY` are generated on startup if unset, which is fine
+for a single local instance. On any **multi-instance / autoscaling host** (e.g.
+fastapi cloud) every process must share the **same** keys, or sessions and
+encrypted Plex tokens break across instances. Generate a fixed pair and set them
+in that platform's env:
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"            # SECRET_KEY
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"  # FERNET_KEY
+uv run python scripts/gen_secrets.py        # prints SECRET_KEY=… / FERNET_KEY=…
 ```
 
 Open http://localhost:8000 and click **Start comparing**.
