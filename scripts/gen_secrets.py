@@ -1,29 +1,27 @@
 #!/usr/bin/env -S uv run python
-"""Generate fixed SECRET_KEY and FERNET_KEY values for the app's env config.
+"""Generate a fixed SECRET_KEY for the app's env config.
 
-On a single instance the app generates these on startup, but fastapi cloud (and
-any autoscaling / multi-worker host) runs several processes that must share the
-SAME keys — otherwise session cookies won't validate across instances and Plex
-tokens encrypted by one instance can't be decrypted by another. So generate the
-pair once here and set both as environment variables on the platform.
+SECRET_KEY signs the session cookie. On a single instance the app can generate
+one on startup, but fastapi cloud (and any autoscaling / multi-worker host) runs
+several processes that must share the SAME value — otherwise a cookie set by one
+process won't validate on another and sessions break mid-login. So generate it
+once here and set it as an environment variable on the platform.
+
+There is no token-encryption key any more: Plex tokens live only in the user's
+browser and never reach the server, so SECRET_KEY is the only shared secret.
 
 Usage:
-    uv run python scripts/gen_secrets.py            # print KEY=value lines
+    uv run python scripts/gen_secrets.py            # print KEY=value line
     uv run python scripts/gen_secrets.py >> .env    # append to a local .env
 
-The two values are independent; regenerating rotates them (logging everyone out
-and orphaning any tokens encrypted with the old FERNET_KEY).
+Regenerating rotates it, logging everyone out.
 """
 
 import secrets
 
-from cryptography.fernet import Fernet
-
 
 def main() -> None:
-    # Matches how app/config.py generates these when the env vars are unset.
     print(f"SECRET_KEY={secrets.token_urlsafe(48)}")
-    print(f"FERNET_KEY={Fernet.generate_key().decode()}")
 
 
 if __name__ == "__main__":

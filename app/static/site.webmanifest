@@ -1,0 +1,13 @@
+{
+  "name": "Plex Watchlist Matcher",
+  "short_name": "Watchlist Match",
+  "description": "Compare Plex watchlists with friends and find the movies and shows everyone wants to watch.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0b0d",
+  "theme_color": "#0c0b0d",
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

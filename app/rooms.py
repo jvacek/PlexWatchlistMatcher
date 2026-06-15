@@ -1,17 +1,24 @@
-"""Room pages, status polling, the background watchlist fetch, and TTL cleanup."""
+"""Room pages, status polling, TTL cleanup, and the client-driven data endpoints.
+
+The Plex token never reaches this server. The user's browser does all Plex I/O
+and POSTs the resulting (non-secret) data here: it registers a participant, then
+uploads its watchlist and watch-state. Every write endpoint is bound to the
+session's membership for that room, so a browser can only write its own row.
+"""
 
 import logging
 import secrets
 from datetime import timedelta
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from . import config, plex
+from . import config
 from .compare import compare
-from .db import engine, get_session
+from .db import get_session
 from .models import Participant, Room, WatchlistItem, WatchState, utcnow
 from .render import templates
 
@@ -19,6 +26,7 @@ router = APIRouter()
 log = logging.getLogger("watchlist")
 
 _SLUG_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"  # no ambiguous chars
+_STATUSES = {"pending", "fetching", "ready", "error"}
 
 
 def new_slug() -> str:
@@ -30,7 +38,7 @@ def is_expired(room: Room) -> bool:
 
 
 def purge_expired(session: Session) -> None:
-    """Delete expired rooms and their participants/items (and their tokens)."""
+    """Delete expired rooms and their participants/items/watch-state."""
     expired = session.exec(select(Room).where(Room.expires_at < utcnow())).all()
     for room in expired:
         participants = session.exec(
@@ -51,148 +59,280 @@ def purge_expired(session: Session) -> None:
     session.commit()
 
 
-async def run_watchlist_fetch(participant_id: int) -> None:
-    """Background task: pull a participant's watchlist into the DB."""
-    with Session(engine) as session:
-        p = session.get(Participant, participant_id)
-        if not p or not p.token_enc:
-            return
-        p.status = "fetching"
-        session.add(p)
-        session.commit()
-        try:
-            token = config.decrypt(p.token_enc)
-            items = await plex.fetch_watchlist(p.client_id, token)
-            details = await plex.fetch_details(
-                p.client_id,
-                token,
-                [it["rating_key"] for it in items if it.get("rating_key")],
-            )
-            # Clear prior items so re-fetches (retry / re-enrich) don't duplicate.
-            for old in session.exec(
-                select(WatchlistItem).where(WatchlistItem.participant_id == p.id)
-            ).all():
-                session.delete(old)
-            for it in items:
-                if not it.get("guid"):
-                    continue
-                d = details.get(it.get("rating_key"), {})
-                session.add(
-                    WatchlistItem(
-                        participant_id=p.id,
-                        plex_guid=it["guid"],
-                        rating_key=it.get("rating_key"),
-                        title=it.get("title") or "Untitled",
-                        type=it.get("type"),
-                        year=_to_int(it.get("year")),
-                        summary=d.get("summary"),
-                        thumb=it.get("thumb"),
-                        rating=_to_float(it.get("rating")),
-                        audience_rating=_to_float(it.get("audience_rating")),
-                        content_rating=it.get("content_rating"),
-                        duration=_to_int(it.get("duration")),
-                        studio=it.get("studio"),
-                        tagline=it.get("tagline"),
-                        genres="|".join(d.get("genres") or []) or None,
-                        director="|".join(d.get("director") or []) or None,
-                        view_count=_to_int(d.get("view_count")),
-                        view_offset=_to_int(d.get("view_offset")),
-                    )
-                )
-            p.status = "ready"
-            p.watchlist_fetched_at = utcnow()
-            room_id = p.room_id
-            session.add(p)
-            session.commit()
-            log.info("watchlist ready for participant %s: %d items", p.id, len(items))
-        except Exception:
-            log.exception("watchlist fetch failed for participant %s", participant_id)
-            session.rollback()
-            p = session.get(Participant, participant_id)
-            if p:
-                p.status = "error"
-                session.add(p)
-                session.commit()
-            return
-    # Cross-reference everyone's watch state against the whole room's items.
-    await sync_watch_states(room_id)
-
-
-async def sync_watch_states(room_id: str) -> None:
-    """For every ready participant, look up their watch state for items they
-    DON'T have on their own watchlist (others' picks) — so we can show that
-    someone has already seen a title that's left their watchlist."""
-    with Session(engine) as session:
-        ready = session.exec(
-            select(Participant).where(
-                Participant.room_id == room_id, Participant.status == "ready"
-            )
-        ).all()
-        own_keys: dict[int, set] = {}
-        union: set = set()
-        for p in ready:
-            keys = {
-                it.rating_key
-                for it in session.exec(
-                    select(WatchlistItem).where(WatchlistItem.participant_id == p.id)
-                ).all()
-                if it.rating_key
-            }
-            own_keys[p.id] = keys
-            union |= keys
-
-        pids = [p.id for p in ready]
-        for old in session.exec(
-            select(WatchState).where(WatchState.participant_id.in_(pids))
-        ).all():
-            session.delete(old)
-        session.commit()
-
-        for p in ready:
-            gap = list(union - own_keys[p.id])
-            if not gap or not p.token_enc:
-                continue
-            try:
-                details = await plex.fetch_details(
-                    p.client_id, config.decrypt(p.token_enc), gap
-                )
-            except Exception:
-                log.exception("watch-state sync failed for participant %s", p.id)
-                continue
-            for rk, d in details.items():
-                vc = _to_int(d.get("view_count")) or 0
-                vo = _to_int(d.get("view_offset")) or 0
-                if vc > 0 or vo > 0:  # only store items they've actually engaged with
-                    session.add(
-                        WatchState(
-                            participant_id=p.id,
-                            rating_key=rk,
-                            view_count=vc,
-                            view_offset=vo,
-                        )
-                    )
-            session.commit()
-
-
-def _to_int(v):
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def _to_float(v):
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
-
-
 def make_room() -> Room:
     return Room(
         id=new_slug(),
         expires_at=utcnow() + timedelta(hours=config.ROOM_TTL_HOURS),
     )
+
+
+def _member_pid(request: Request, slug: str) -> int | None:
+    return request.session.get("members", {}).get(slug)
+
+
+def _require_member(request: Request, slug: str, pid: int) -> None:
+    """A browser may only write the participant it registered for this room."""
+    if _member_pid(request, slug) != pid:
+        raise HTTPException(status_code=403, detail="not your participant")
+
+
+# --- Client-driven data endpoints -------------------------------------------
+# The browser holds the Plex token and calls Plex directly; these endpoints just
+# receive the resulting data. See app/static/plex-client.js for the caller.
+
+
+class RegisterIn(BaseModel):
+    plex_uuid: str
+    plex_username: str
+    plex_thumb: str | None = None
+    client_id: str
+    role: str = "guest"
+    room: str | None = None
+
+
+class ItemIn(BaseModel):
+    guid: str
+    rating_key: str | None = None
+    title: str | None = None
+    type: str | None = None
+    year: int | None = None
+    summary: str | None = None
+    thumb: str | None = None
+    rating: float | None = None
+    audience_rating: float | None = None
+    content_rating: str | None = None
+    duration: int | None = None
+    studio: str | None = None
+    tagline: str | None = None
+    genres: list[str] = []
+    director: list[str] = []
+    view_count: int | None = None
+    view_offset: int | None = None
+
+
+class WatchlistIn(BaseModel):
+    items: list[ItemIn]
+
+
+class StateIn(BaseModel):
+    rating_key: str
+    view_count: int = 0
+    view_offset: int = 0
+
+
+class WatchStateIn(BaseModel):
+    states: list[StateIn]
+
+
+class StatusIn(BaseModel):
+    status: str
+
+
+@router.post("/participant")
+async def register(
+    body: RegisterIn, request: Request, session: Session = Depends(get_session)
+):
+    """Register (or re-join) a participant from browser-supplied identity. No
+    token: the browser fetched /user from Plex and posts the public fields."""
+    sess = request.session
+    role, slug = body.role, body.room
+    if role == "host" or not slug:
+        room = make_room()
+        session.add(room)
+        session.commit()
+        slug = room.id
+    else:
+        room = session.get(Room, slug)
+        if not room or is_expired(room):
+            raise HTTPException(status_code=404, detail="room not found")
+
+    participant = session.exec(
+        select(Participant).where(
+            Participant.room_id == slug, Participant.plex_uuid == body.plex_uuid
+        )
+    ).first()
+    if participant is None:
+        participant = Participant(
+            room_id=slug,
+            plex_uuid=body.plex_uuid,
+            plex_username=body.plex_username,
+            plex_thumb=body.plex_thumb,
+            client_id=body.client_id,
+        )
+    else:
+        participant.plex_username = body.plex_username
+        participant.plex_thumb = body.plex_thumb
+        participant.client_id = body.client_id
+    participant.status = "pending"
+    session.add(participant)
+    session.commit()
+    session.refresh(participant)
+
+    if room.host_participant_id is None and role == "host":
+        room.host_participant_id = participant.id
+        session.add(room)
+        session.commit()
+
+    members = sess.get("members", {})
+    members[slug] = participant.id
+    sess["members"] = members
+
+    log.info(
+        "register instance=%s slug=%s pid=%s role=%s user=%s",
+        config.INSTANCE_ID,
+        slug,
+        participant.id,
+        role,
+        body.plex_username,
+    )
+    return {
+        "participant_id": participant.id,
+        "slug": slug,
+        "status": participant.status,
+    }
+
+
+@router.post("/room/{slug}/participant/{pid}/watchlist")
+async def upload_watchlist(
+    slug: str,
+    pid: int,
+    body: WatchlistIn,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Receive a participant's watchlist (fetched client-side) and store it."""
+    _require_member(request, slug, pid)
+    p = session.get(Participant, pid)
+    if not p or p.room_id != slug:
+        raise HTTPException(status_code=404, detail="participant not found")
+
+    # Clear prior items so re-uploads (retry / re-enrich) don't duplicate.
+    for old in session.exec(
+        select(WatchlistItem).where(WatchlistItem.participant_id == p.id)
+    ).all():
+        session.delete(old)
+
+    count = 0
+    for it in body.items:
+        if not it.guid:
+            continue
+        session.add(
+            WatchlistItem(
+                participant_id=p.id,
+                plex_guid=it.guid,
+                rating_key=it.rating_key,
+                title=it.title or "Untitled",
+                type=it.type,
+                year=it.year,
+                summary=it.summary,
+                thumb=it.thumb,
+                rating=it.rating,
+                audience_rating=it.audience_rating,
+                content_rating=it.content_rating,
+                duration=it.duration,
+                studio=it.studio,
+                tagline=it.tagline,
+                genres="|".join(it.genres) or None,
+                director="|".join(it.director) or None,
+                view_count=it.view_count,
+                view_offset=it.view_offset,
+            )
+        )
+        count += 1
+
+    p.status = "ready"
+    p.watchlist_fetched_at = utcnow()
+    session.add(p)
+    session.commit()
+    log.info("watchlist uploaded for participant %s: %d items", p.id, count)
+    return {"ok": True, "count": count}
+
+
+@router.get("/room/{slug}/participant/{pid}/gap")
+async def watch_state_gap(
+    slug: str,
+    pid: int,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Rating keys on OTHER ready participants' watchlists but not this one's, so
+    the browser can ask Plex whether this user has already seen them."""
+    _require_member(request, slug, pid)
+    ready = session.exec(
+        select(Participant).where(
+            Participant.room_id == slug, Participant.status == "ready"
+        )
+    ).all()
+    union: set[str] = set()
+    own: set[str] = set()
+    for person in ready:
+        keys = {
+            it.rating_key
+            for it in session.exec(
+                select(WatchlistItem).where(WatchlistItem.participant_id == person.id)
+            ).all()
+            if it.rating_key
+        }
+        union |= keys
+        if person.id == pid:
+            own = keys
+    return {"rating_keys": sorted(union - own)}
+
+
+@router.post("/room/{slug}/participant/{pid}/watch-state")
+async def upload_watch_state(
+    slug: str,
+    pid: int,
+    body: WatchStateIn,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Receive this participant's watch state for other people's titles."""
+    _require_member(request, slug, pid)
+    p = session.get(Participant, pid)
+    if not p or p.room_id != slug:
+        raise HTTPException(status_code=404, detail="participant not found")
+
+    for old in session.exec(
+        select(WatchState).where(WatchState.participant_id == pid)
+    ).all():
+        session.delete(old)
+    for s in body.states:
+        if s.view_count > 0 or s.view_offset > 0:
+            session.add(
+                WatchState(
+                    participant_id=pid,
+                    rating_key=s.rating_key,
+                    view_count=s.view_count,
+                    view_offset=s.view_offset,
+                )
+            )
+    session.commit()
+    return {"ok": True}
+
+
+@router.post("/room/{slug}/participant/{pid}/status")
+async def set_status(
+    slug: str,
+    pid: int,
+    body: StatusIn,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Let the browser flag fetching/error so other viewers see the right pill."""
+    _require_member(request, slug, pid)
+    if body.status not in _STATUSES:
+        raise HTTPException(status_code=422, detail="bad status")
+    p = session.get(Participant, pid)
+    if not p or p.room_id != slug:
+        raise HTTPException(status_code=404, detail="participant not found")
+    p.status = body.status
+    session.add(p)
+    session.commit()
+    return {"ok": True}
+
+
+# --- Room pages + status polling (server-rendered, unchanged behaviour) ------
 
 
 def _item_dict(it: WatchlistItem) -> dict:
@@ -261,7 +401,7 @@ async def room_status(
     if request.query_params.get("csig") == sig:
         return Response(status_code=204)
 
-    my_pid = request.session.get("members", {}).get(slug)
+    my_pid = _member_pid(request, slug)
     is_member = any(p.id == my_pid for p in participants)
 
     ready = [p for p in participants if p.status == "ready"]
@@ -356,45 +496,3 @@ async def room_status(
             "share_url": f"{config.BASE_URL}/room/{slug}",
         },
     )
-
-
-@router.post("/room/{slug}/retry")
-async def retry(
-    slug: str,
-    request: Request,
-    background: BackgroundTasks,
-    session: Session = Depends(get_session),
-):
-    """Re-run the watchlist fetch for the current browser's errored participant."""
-    pid = request.session.get("members", {}).get(slug)
-    if pid:
-        p = session.get(Participant, pid)
-        if p and p.status == "error" and p.token_enc:
-            p.status = "pending"
-            session.add(p)
-            session.commit()
-            background.add_task(run_watchlist_fetch, p.id)
-    # The status change itself makes the signature differ from what the client
-    # last rendered, so its next poll re-renders — nothing else to do here.
-    return Response(status_code=204)
-
-
-@router.post("/room/{slug}/watchlist/add")
-async def watchlist_add(
-    slug: str,
-    rating_key: str,
-    request: Request,
-    session: Session = Depends(get_session),
-):
-    """Add an item to the current browser's own Plex watchlist."""
-    pid = request.session.get("members", {}).get(slug)
-    ok = False
-    if pid and rating_key:
-        p = session.get(Participant, pid)
-        if p and p.token_enc:
-            ok = await plex.add_to_watchlist(
-                p.client_id, config.decrypt(p.token_enc), rating_key
-            )
-    if ok:
-        return HTMLResponse('<span class="added">✓ On your watchlist</span>')
-    return HTMLResponse('<span class="add-failed">Couldn\'t add</span>')

@@ -26,8 +26,9 @@ class Participant(SQLModel, table=True):
     plex_username: str
     plex_thumb: str | None = None
     client_id: str  # the Plex client identifier this person authed with
-    token_enc: str | None = None  # Fernet-encrypted Plex token; purged on expiry
-    status: str = "pending"  # pending | fetching | ready | error
+    # NOTE: no token is stored. The Plex token lives only in the user's browser;
+    # the browser does all Plex I/O and posts back the (non-secret) watchlist data.
+    status: str = "pending"  # pending | fetching | ready | error (client-driven)
     joined_at: datetime = Field(default_factory=utcnow)
     watchlist_fetched_at: datetime | None = None
 

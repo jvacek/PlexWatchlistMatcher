@@ -1,138 +1,21 @@
-"""Plex PIN/OAuth flow: login -> redirect to Plex -> callback -> poll -> join room."""
+"""Plex sign-in entry point.
 
-import logging
-from uuid import uuid4
+The whole PIN flow runs in the browser (see app/static/plex-client.js): it
+creates a PIN against plex.tv, sends the user to app.plex.tv to approve it, then
+polls for the token — which is born in the browser and NEVER sent to this server.
+This route only serves the page that drives that flow and remembers the desired
+role/room across the redirect bounce through Plex.
+"""
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlmodel import Session, select
+from fastapi import APIRouter, Request
 
-from . import config, plex
-from .db import get_session
-from .models import Participant, Room
 from .render import templates
-from .rooms import is_expired, make_room, run_watchlist_fetch
 
 router = APIRouter()
-log = logging.getLogger("watchlist")
 
 
-def _hx_redirect(url: str) -> HTMLResponse:
-    resp = HTMLResponse("")
-    resp.headers["HX-Redirect"] = url
-    return resp
-
-
-@router.get("/auth/login")
-async def login(request: Request, role: str = "host", room: str | None = None):
-    sess = request.session
-    client_id = sess.get("client_id") or str(uuid4())
-    sess["client_id"] = client_id
-
-    pin = await plex.create_pin(client_id)
-    sess["pending"] = {"pin_id": pin["id"], "role": role, "room": room}
-
-    log.info(
-        "login instance=%s secret_fp=%s set pending pin=%s role=%s room=%s client=%s…",
-        config.INSTANCE_ID,
-        config.SECRET_KEY_FP,
-        pin["id"],
-        role,
-        room,
-        client_id[:8],
+@router.get("/auth")
+async def auth(request: Request, role: str = "host", room: str | None = None):
+    return templates.TemplateResponse(
+        request, "auth.html", {"role": role, "room": room or ""}
     )
-    forward_url = f"{config.BASE_URL}/auth/callback"
-    return RedirectResponse(
-        plex.auth_url(client_id, pin["code"], forward_url), status_code=303
-    )
-
-
-@router.get("/auth/callback")
-async def callback(request: Request):
-    # Plex sends the browser here after login. The token isn't in this request —
-    # this page just starts polling /auth/poll.
-    log.info(
-        "callback instance=%s secret_fp=%s session_keys=%s",
-        config.INSTANCE_ID,
-        config.SECRET_KEY_FP,
-        sorted(request.session.keys()),
-    )
-    return templates.TemplateResponse(request, "linking.html", {})
-
-
-@router.get("/auth/poll")
-async def poll(
-    request: Request,
-    background: BackgroundTasks,
-    session: Session = Depends(get_session),
-):
-    sess = request.session
-    pending = sess.get("pending")
-    client_id = sess.get("client_id")
-    log.info(
-        "poll instance=%s secret_fp=%s session_keys=%s has_pending=%s has_client=%s",
-        config.INSTANCE_ID,
-        config.SECRET_KEY_FP,
-        sorted(sess.keys()),
-        bool(pending),
-        bool(client_id),
-    )
-    if not pending or not client_id:
-        log.warning(
-            "poll empty session -> redirect home. instance=%s secret_fp=%s keys=%s",
-            config.INSTANCE_ID,
-            config.SECRET_KEY_FP,
-            sorted(sess.keys()),
-        )
-        return _hx_redirect("/")
-
-    token = await plex.poll_pin(client_id, pending["pin_id"])
-    if not token:
-        return HTMLResponse("<p>Waiting for you to approve access in Plex…</p>")
-
-    user = await plex.get_user(client_id, token)
-
-    role, slug = pending["role"], pending.get("room")
-    if role == "host" or not slug:
-        room = make_room()
-        session.add(room)
-        session.commit()
-        slug = room.id
-    else:
-        room = session.get(Room, slug)
-        if not room or is_expired(room):
-            sess.pop("pending", None)
-            return _hx_redirect(f"/room/{slug}")
-
-    # Reuse an existing participant if this account already joined this room.
-    participant = session.exec(
-        select(Participant).where(
-            Participant.room_id == slug, Participant.plex_uuid == user["uuid"]
-        )
-    ).first()
-    if participant is None:
-        participant = Participant(
-            room_id=slug,
-            plex_uuid=user["uuid"],
-            plex_username=user["username"],
-            plex_thumb=user.get("thumb"),
-            client_id=client_id,
-        )
-    participant.token_enc = config.encrypt(token)
-    participant.status = "pending"
-    session.add(participant)
-    session.commit()
-    session.refresh(participant)
-
-    if room.host_participant_id is None and (role == "host"):
-        room.host_participant_id = participant.id
-        session.add(room)
-        session.commit()
-
-    members = sess.get("members", {})
-    members[slug] = participant.id
-    sess["members"] = members
-    sess.pop("pending", None)
-
-    background.add_task(run_watchlist_fetch, participant.id)
-    return _hx_redirect(f"/room/{slug}")

@@ -6,11 +6,9 @@ services:
       # Public HTTPS URL (must match DOMAIN below), e.g. https://watchlist.example.com
       - BASE_URL=${BASE_URL:?set BASE_URL in .env}
       - SECRET_KEY=${SECRET_KEY:?set SECRET_KEY in .env}
-      - FERNET_KEY=${FERNET_KEY:?set FERNET_KEY in .env}
       - COOKIE_SECURE=true
       - DB_URL=sqlite:////data/app.db
       - DATA_DIR=/data
-      - CACHE_DIR=/data/imgcache
       - ROOM_TTL_HOURS=${ROOM_TTL_HOURS:-24}
     volumes:
       - app-data:/data

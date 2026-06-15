@@ -8,7 +8,7 @@
     data-seen="{{ 1 if (r.seen_any or r.item.watched or r.item.in_progress) else 0 }}">
   <div class="poster">
     {% if r.item.thumb %}
-      <img src="/img?room={{ slug }}&src={{ r.item.thumb | urlencode }}" alt="" loading="lazy">
+      <img data-poster-src="{{ r.item.thumb }}" alt="{{ r.item.title }} poster" loading="lazy">
     {% endif %}
   </div>
   <div class="meta">
@@ -36,7 +36,7 @@
             {% set label = w.username ~ (' — watched' if w.watched else (' — in progress' if w.in_progress else (' — wants it' if not w.wants else ''))) %}
             <span class="who-av{% if w.watched %} seen{% elif w.in_progress %} partial{% endif %}{% if not w.wants %} seen-only{% endif %}"
                   title="{{ label }}">
-              <img class="avatar" src="/img?room={{ slug }}&src={{ w.thumb | urlencode }}" alt="" loading="lazy">
+              <img class="avatar" data-poster-src="{{ w.thumb }}" alt="{{ w.username }}" loading="lazy">
               {% if w.watched %}<span class="seen-badge">✓</span>{% elif w.in_progress %}<span class="seen-badge">◐</span>{% endif %}
             </span>
           {% endif %}
@@ -49,9 +49,8 @@
       <span class="watch-badge partial">◐ In progress</span>
     {% endif %}
     {% if is_member and r.who is defined and my_pid not in r.who and r.item.rating_key %}
-      <button class="link-btn add-btn"
-              hx-post="/room/{{ slug }}/watchlist/add?rating_key={{ r.item.rating_key }}"
-              hx-swap="outerHTML">+ Watchlist</button>
+      <button type="button" class="link-btn add-btn"
+              data-rating-key="{{ r.item.rating_key }}">+ Watchlist</button>
     {% endif %}
   </div>
 </li>

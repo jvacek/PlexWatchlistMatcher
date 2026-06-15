@@ -19,20 +19,21 @@
       {% for p in participants %}
         <li>
           {% if p.plex_thumb %}
-            <img class="avatar" src="/img?room={{ slug }}&src={{ p.plex_thumb | urlencode }}"
+            <img class="avatar" data-poster-src="{{ p.plex_thumb }}"
                  alt="{{ p.plex_username }}" loading="lazy">
           {% endif %}
           <span class="name">{{ p.plex_username }}</span>
+          {% if p.id == my_pid %}<span class="you-tag">That&rsquo;s you!</span>{% endif %}
           <span class="pill pill-{{ p.status }}">{{ p.status }}</span>
           {% if p.status == "error" and p.id == my_pid %}
-            <button class="link-btn" hx-post="/room/{{ slug }}/retry" hx-swap="none">retry</button>
+            <button type="button" class="link-btn retry-btn" data-pid="{{ p.id }}">retry</button>
           {% endif %}
         </li>
       {% endfor %}
     </ul>
 
     {% if not is_member %}
-      <a href="/auth/login?role=guest&room={{ slug }}" hx-boost="false" class="btn">Join with Plex</a>
+      <a href="/auth?role=guest&room={{ slug }}" hx-boost="false" class="btn">Join with Plex</a>
     {% endif %}
   </section>
 

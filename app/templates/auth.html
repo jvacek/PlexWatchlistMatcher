@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Linking your Plex account · Plex Watchlist Matcher{% endblock %}
+{% block robots %}noindex, follow{% endblock %}
+{% block content %}
+<section class="hero linking-stage">
+  <div class="reel" aria-hidden="true"><i></i></div>
+  <p class="eyebrow">Rolling</p>
+  <h1>Linking your Plex account</h1>
+  <!-- plex-client.js picks this up: it creates a Plex PIN, sends you to Plex to
+       approve it, then polls for the token here in your browser. The token never
+       reaches our server. -->
+  <p id="auth-flow" data-role="{{ role }}" data-room="{{ room }}">Connecting to Plex…</p>
+</section>
+{% endblock %}

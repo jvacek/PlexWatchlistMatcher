@@ -131,6 +131,7 @@ a { color: var(--gold); text-underline-offset: 3px; }
   height: var(--header-h);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 var(--s5);
   background: color-mix(in srgb, var(--ink-900) 78%, transparent);
   backdrop-filter: blur(14px) saturate(1.2);
@@ -144,12 +145,27 @@ a { color: var(--gold); text-underline-offset: 3px; }
   color: var(--paper);
   text-decoration: none;
 }
+.site-nav a {
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  color: var(--paper-dim);
+}
+.site-nav a:hover { color: var(--paper); }
+
+/* Quiet link under the hero pointing to the fuller About page. */
+.hero-more {
+  margin-top: var(--s6);
+  font-size: .95rem;
+  color: var(--paper-dim);
+}
+.hero-more a { color: var(--gold); }
 .brand-mark {
-  font-family: var(--font-body);
-  color: var(--gold);
-  font-size: 1.1rem;
-  transform: translateY(1px);
-  text-shadow: 0 0 14px var(--gold-glow);
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 6px;
+  align-self: center;
 }
 .brand-word {
   font-family: var(--font-display);
@@ -445,6 +461,17 @@ html.can-share .share-btn { display: inline-flex; }
   flex: none;
 }
 .people .name { font-weight: 600; font-size: .95rem; }
+.you-tag {
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--gold-bright);
+  background: var(--gold-haze);
+  padding: .2rem .45rem;
+  border-radius: var(--r-pill);
+  box-shadow: 0 0 0 1px var(--gold-deep) inset;
+}
 .people .pill { margin-left: auto; }
 
 /* — Status pills — */
@@ -946,4 +973,79 @@ html.can-share .share-btn { display: inline-flex; }
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
   }
+}
+
+/* ===================== Landing — SEO content sections ==================== */
+
+.seo-section {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: var(--s7) var(--s4);
+  border-top: 1px solid var(--line-soft);
+}
+.seo-section h2 {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  margin: 0 0 var(--s4);
+  text-wrap: balance;
+}
+.seo-section > p {
+  color: var(--paper-dim);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  max-width: 40rem;
+  margin: 0 0 var(--s4);
+}
+.seo-section .seo-cta { text-align: center; margin: var(--s6) 0 0; }
+
+/* Reuse the numbered steps, but drop the standalone divider/top margin since the
+   section already supplies a heading. */
+.seo-section .how {
+  margin-top: var(--s5);
+  padding-top: 0;
+  border-top: none;
+}
+
+/* — FAQ accordion (native <details>, no JS) — */
+.faq details {
+  border-top: 1px solid var(--line);
+  padding: var(--s4) 0;
+}
+.faq details:last-of-type { border-bottom: 1px solid var(--line); }
+.faq summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--paper);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s4);
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: "+";
+  font-family: var(--font-mono);
+  color: var(--gold);
+  font-size: 1.4rem;
+  line-height: 1;
+  flex: none;
+}
+.faq details[open] summary::after { content: "\2212"; }
+.faq details p {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: var(--s3) 0 0;
+  max-width: 40rem;
+}
+
+@media (max-width: 600px) {
+  .seo-section { padding: var(--s6) var(--s4); }
 }

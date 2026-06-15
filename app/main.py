@@ -7,13 +7,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import config, db
 from .auth import router as auth_router
-from .images import router as images_router
 from .render import templates
 from .rooms import purge_expired
 from .rooms import router as rooms_router
@@ -45,10 +45,9 @@ async def _purge_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info(
-        "boot instance=%s secret_fp=%s fernet_fp=%s db=%s cookie_secure=%s",
+        "boot instance=%s secret_fp=%s db=%s cookie_secure=%s",
         config.INSTANCE_ID,
         config.SECRET_KEY_FP,
-        config.FERNET_KEY_FP,
         db.engine.dialect.name,
         config.COOKIE_SECURE,
     )
@@ -77,9 +76,52 @@ app.mount(
 
 app.include_router(auth_router)
 app.include_router(rooms_router)
-app.include_router(images_router)
 
 
 @app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html", {})
+
+
+@app.get("/about")
+async def about(request: Request):
+    return templates.TemplateResponse(request, "about.html", {})
+
+
+# --- SEO: crawl directives + favicon at the conventional root paths ---------
+# Only the landing page ("/") is permanent and public; everything else is an
+# ephemeral 24h room, an auth redirect, or a polling fragment, so keep crawlers
+# out of those and point them at the sitemap.
+
+_STATIC_DIR = Path(__file__).parent / "static"
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt():
+    body = (
+        "User-agent: *\n"
+        "Disallow: /room/\n"
+        "Disallow: /auth\n"
+        "Allow: /\n"
+        f"Sitemap: {config.BASE_URL}/sitemap.xml\n"
+    )
+    return PlainTextResponse(body)
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml():
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"  <url><loc>{config.BASE_URL}/</loc>"
+        "<changefreq>monthly</changefreq><priority>1.0</priority></url>\n"
+        f"  <url><loc>{config.BASE_URL}/about</loc>"
+        "<changefreq>monthly</changefreq><priority>0.8</priority></url>\n"
+        "</urlset>\n"
+    )
+    return Response(body, media_type="application/xml")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(_STATIC_DIR / "favicon.ico", media_type="image/x-icon")

@@ -4,7 +4,6 @@ import hashlib
 import os
 from uuid import uuid4
 
-from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,32 +24,19 @@ DB_URL = os.getenv("DATABASE_URL") or os.getenv("DB_URL") or "sqlite:///./data/a
 
 # Signs session cookies. Required: every instance must share the SAME value or
 # a cookie set by one can't be validated by another (sessions break mid-login).
+# This is now the ONLY shared secret — Plex tokens never reach the server, so
+# there is no token-encryption key to coordinate across instances.
 SECRET_KEY = os.environ["SECRET_KEY"]
 DATA_DIR = os.getenv("DATA_DIR", "./data")
-CACHE_DIR = os.getenv("CACHE_DIR", "./data/imgcache")
 ROOM_TTL_HOURS = int(os.getenv("ROOM_TTL_HOURS", "24"))
 
 # Only send cookies over HTTPS in production. Off by default so localhost works.
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
-# Key for encrypting Plex tokens at rest. Required and shared across instances:
-# each process needs the SAME key to decrypt tokens the others wrote.
-_fkey = os.environ["FERNET_KEY"]
-_fernet = Fernet(_fkey.encode())
 
-
-# Diagnostics. A per-process id plus short fingerprints of the keys: if two
-# requests in one Plex login log different fingerprints, the instances disagree
-# on SECRET_KEY/FERNET_KEY — which is exactly what breaks sessions across an
-# autoscaled deploy. Fingerprints are one-way hashes, safe to log.
+# Diagnostics. A per-process id plus a short fingerprint of SECRET_KEY: if two
+# requests in one session log different fingerprints, the instances disagree on
+# SECRET_KEY — which breaks cookie sessions across an autoscaled deploy. The
+# fingerprint is a one-way hash, safe to log.
 INSTANCE_ID = uuid4().hex[:8]
 SECRET_KEY_FP = hashlib.sha256(SECRET_KEY.encode()).hexdigest()[:8]
-FERNET_KEY_FP = hashlib.sha256(_fkey.encode()).hexdigest()[:8]
-
-
-def encrypt(plaintext: str) -> str:
-    return _fernet.encrypt(plaintext.encode()).decode()
-
-
-def decrypt(ciphertext: str) -> str:
-    return _fernet.decrypt(ciphertext.encode()).decode()

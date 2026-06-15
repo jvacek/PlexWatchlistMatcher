@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}How Plex Watchlist Matcher works · Plex Watchlist Matcher{% endblock %}
+{% block description %}How Plex Watchlist Matcher works: a free tool to compare Plex watchlists with friends. Sign in with Plex, share one link, and find the movies and shows everyone wants to watch.{% endblock %}
+{% block content %}
+<section class="seo-section">
+  <h1>About Plex Watchlist Matcher</h1>
+  <p>
+    Plex Watchlist Matcher is a free Plex watchlist comparison tool that takes the
+    guesswork out of movie night. Instead of scrolling through everyone&rsquo;s lists
+    separately, you sign in with Plex, share one link, and the app lines up every
+    watchlist side by side to find the movies and shows everyone wants to watch.
+    Think of it as a shared watchlist that builds itself: the more friends who join,
+    the clearer it gets which titles you all have in common.
+  </p>
+  <p>
+    It works for both movies and TV shows, pulls in posters, critic and audience
+    ratings, runtime and genres, and shows you exactly who has each title on their
+    list. Rooms are private and disposable &mdash; they expire automatically after
+    24 hours, so there&rsquo;s nothing to manage and nothing to delete.
+  </p>
+</section>
+
+<section class="seo-section">
+  <h2>How to compare your watchlists</h2>
+  <ol class="how">
+    <li>
+      <span class="step-n">01</span>
+      <b>Sign in with Plex</b>
+      <p>One tap with your own Plex account. No new password, no app to install.</p>
+    </li>
+    <li>
+      <span class="step-n">02</span>
+      <b>Share the link</b>
+      <p>Send the room link to friends. They sign in with their own Plex accounts.</p>
+    </li>
+    <li>
+      <span class="step-n">03</span>
+      <b>Find common movies</b>
+      <p>Shared picks float to the top &mdash; with posters, ratings, and who&rsquo;s in.</p>
+    </li>
+  </ol>
+  <p class="seo-cta"><a href="/auth?role=host" hx-boost="false" class="btn">Start comparing</a></p>
+</section>
+
+<section class="seo-section faq">
+  <h2>Frequently asked questions</h2>
+
+  <details>
+    <summary>Is Plex Watchlist Matcher free?</summary>
+    <p>Yes, it is completely free. Sign in with your Plex account, share a link, and compare watchlists at no cost.</p>
+  </details>
+
+  <details>
+    <summary>Do my friends need their own Plex account?</summary>
+    <p>Yes. Everyone signs in with their own Plex account so the app can read each person&rsquo;s watchlist and find the overlap.</p>
+  </details>
+
+  <details>
+    <summary>Do you store my Plex password or access token?</summary>
+    <p>No. Sign-in uses Plex&rsquo;s official login, so we never see your password &mdash; and your Plex access token stays in your own browser and is never sent to our servers. We only receive your watchlist titles to find the overlap, and comparison rooms expire automatically after 24 hours.</p>
+  </details>
+
+  <details>
+    <summary>Does it compare movies, TV shows, or both?</summary>
+    <p>Both. Every movie and show on your Plex watchlist is compared, with posters, ratings, and who wants each title.</p>
+  </details>
+
+  <details>
+    <summary>How many people can compare watchlists at once?</summary>
+    <p>Any number. Two people is enough to find common movies; with three or more you also get partial overlaps showing what some of you want.</p>
+  </details>
+
+  <details>
+    <summary>Does it work on phones?</summary>
+    <p>Yes. It is mobile-first, so friends can open the share link and compare watchlists straight from their phones.</p>
+  </details>
+</section>
+{% endblock %}
+
+{% block head_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is Plex Watchlist Matcher free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes, it is completely free. Sign in with your Plex account, share a link, and compare watchlists at no cost." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do my friends need their own Plex account?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Everyone signs in with their own Plex account so the app can read each person's watchlist and find the overlap." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do you store my Plex password or access token?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Sign-in uses Plex's official login, so we never see your password, and your Plex access token stays in your own browser and is never sent to our servers. We only receive your watchlist titles to find the overlap, and comparison rooms expire automatically after 24 hours." }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it compare movies, TV shows, or both?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Both. Every movie and show on your Plex watchlist is compared, with posters, ratings, and who wants each title." }
+    },
+    {
+      "@type": "Question",
+      "name": "How many people can compare watchlists at once?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Any number. Two people is enough to find common movies; with three or more you also get partial overlaps showing what some of you want." }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it work on phones?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is mobile-first, so friends can open the share link and compare watchlists straight from their phones." }
+    }
+  ]
+}
+</script>
+{% endblock %}
