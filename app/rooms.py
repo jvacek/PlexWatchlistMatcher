@@ -218,7 +218,9 @@ def _item_dict(it: WatchlistItem) -> dict:
 
 
 @router.get("/room/{slug}")
-async def room_page(slug: str, request: Request, session: Session = Depends(get_session)):
+async def room_page(
+    slug: str, request: Request, session: Session = Depends(get_session)
+):
     purge_expired(session)
     room = session.get(Room, slug)
     return templates.TemplateResponse(
@@ -227,10 +229,14 @@ async def room_page(slug: str, request: Request, session: Session = Depends(get_
 
 
 @router.get("/room/{slug}/status")
-async def room_status(slug: str, request: Request, session: Session = Depends(get_session)):
+async def room_status(
+    slug: str, request: Request, session: Session = Depends(get_session)
+):
     room = session.get(Room, slug)
     if not room or is_expired(room):
-        return templates.TemplateResponse(request, "partials/status.html", {"state": "expired"})
+        return templates.TemplateResponse(
+            request, "partials/status.html", {"state": "expired"}
+        )
 
     participants = session.exec(
         select(Participant).where(Participant.room_id == slug).order_by(Participant.id)
@@ -277,7 +283,9 @@ async def room_status(slug: str, request: Request, session: Session = Depends(ge
         }
         watch_by_pid: dict[int, dict] = {}
         for w in session.exec(
-            select(WatchState).where(WatchState.participant_id.in_([p.id for p in ready]))
+            select(WatchState).where(
+                WatchState.participant_id.in_([p.id for p in ready])
+            )
         ).all():
             guid = rk_to_guid.get(w.rating_key)
             if guid:

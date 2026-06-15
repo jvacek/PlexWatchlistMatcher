@@ -14,19 +14,16 @@ it uses Plex's public PIN/OAuth flow. See `doc/PLAN.md` for the design and
 
 ```bash
 uv sync
-cp .env.example .env        # SECRET_KEY/FERNET_KEY optional locally (see below)
+cp .env.example .env
+uv run python scripts/gen_secrets.py >> .env   # fill in the required keys
 uv run uvicorn app.main:app --reload
 ```
 
-`SECRET_KEY` and `FERNET_KEY` are generated on startup if unset, which is fine
-for a single local instance. On any **multi-instance / autoscaling host** (e.g.
-fastapi cloud) every process must share the **same** keys, or sessions and
-encrypted Plex tokens break across instances. Generate a fixed pair and set them
-in that platform's env:
-
-```bash
-uv run python scripts/gen_secrets.py        # prints SECRET_KEY=… / FERNET_KEY=…
-```
+`SECRET_KEY` and `FERNET_KEY` are **required** — the app refuses to start without
+them. Every instance must share the **same** values, or sessions and encrypted
+Plex tokens break across instances. On a **multi-instance / autoscaling host**
+(e.g. fastapi cloud) set the same pair in that platform's env. Generate a pair
+with `uv run python scripts/gen_secrets.py` (prints `SECRET_KEY=…` / `FERNET_KEY=…`).
 
 Open http://localhost:8000 and click **Start comparing**.
 

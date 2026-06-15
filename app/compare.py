@@ -48,7 +48,9 @@ def compare(participants: list[dict]) -> dict:
             "guid": guid,
             "item": item,
             "who": wants,
-            "who_users": [p.get("username") for p in participants if guid in p["items"]],
+            "who_users": [
+                p.get("username") for p in participants if guid in p["items"]
+            ],
             "people": people,
             "count": count,
             "total": total,

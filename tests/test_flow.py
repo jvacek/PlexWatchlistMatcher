@@ -24,7 +24,9 @@ def test_two_user_room_flow(respx_mock):
 
     def create_pin(_request):
         counter["n"] += 1
-        return httpx.Response(200, json={"id": counter["n"], "code": f"C{counter['n']}"})
+        return httpx.Response(
+            200, json={"id": counter["n"], "code": f"C{counter['n']}"}
+        )
 
     def poll(request):
         pin_id = request.url.path.rsplit("/", 1)[-1]
@@ -32,20 +34,34 @@ def test_two_user_room_flow(respx_mock):
 
     def user(request):
         tok = request.headers["X-Plex-Token"]
-        return httpx.Response(200, json={"uuid": f"uuid-{tok}", "username": f"user-{tok}"})
+        return httpx.Response(
+            200, json={"uuid": f"uuid-{tok}", "username": f"user-{tok}"}
+        )
 
     def watchlist(request):
         tok = request.headers["X-Plex-Token"]
-        shared = {"guid": "plex://movie/shared", "title": "Shared Movie",
-                  "type": "movie", "year": 2020}
+        shared = {
+            "guid": "plex://movie/shared",
+            "title": "Shared Movie",
+            "type": "movie",
+            "year": 2020,
+        }
         only = {"guid": f"plex://movie/{tok}", "title": f"Only {tok}", "type": "movie"}
         return httpx.Response(
             200,
-            json={"MediaContainer": {"size": 2, "totalSize": 2, "Metadata": [shared, only]}},
+            json={
+                "MediaContainer": {
+                    "size": 2,
+                    "totalSize": 2,
+                    "Metadata": [shared, only],
+                }
+            },
         )
 
     respx_mock.post("https://plex.tv/api/v2/pins").mock(side_effect=create_pin)
-    respx_mock.get(url__regex=r"https://plex\.tv/api/v2/pins/\d+").mock(side_effect=poll)
+    respx_mock.get(url__regex=r"https://plex\.tv/api/v2/pins/\d+").mock(
+        side_effect=poll
+    )
     respx_mock.get("https://plex.tv/api/v2/user").mock(side_effect=user)
     respx_mock.get(
         "https://discover.provider.plex.tv/library/sections/watchlist/all"

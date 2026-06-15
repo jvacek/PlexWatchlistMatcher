@@ -1,5 +1,6 @@
 """Plex PIN/OAuth flow: login -> redirect to Plex -> callback -> poll -> join room."""
 
+import logging
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
@@ -13,6 +14,7 @@ from .render import templates
 from .rooms import is_expired, make_room, run_watchlist_fetch
 
 router = APIRouter()
+log = logging.getLogger("watchlist")
 
 
 def _hx_redirect(url: str) -> HTMLResponse:
@@ -30,6 +32,15 @@ async def login(request: Request, role: str = "host", room: str | None = None):
     pin = await plex.create_pin(client_id)
     sess["pending"] = {"pin_id": pin["id"], "role": role, "room": room}
 
+    log.info(
+        "login instance=%s secret_fp=%s set pending pin=%s role=%s room=%s client=%s…",
+        config.INSTANCE_ID,
+        config.SECRET_KEY_FP,
+        pin["id"],
+        role,
+        room,
+        client_id[:8],
+    )
     forward_url = f"{config.BASE_URL}/auth/callback"
     return RedirectResponse(
         plex.auth_url(client_id, pin["code"], forward_url), status_code=303
@@ -40,6 +51,12 @@ async def login(request: Request, role: str = "host", room: str | None = None):
 async def callback(request: Request):
     # Plex sends the browser here after login. The token isn't in this request —
     # this page just starts polling /auth/poll.
+    log.info(
+        "callback instance=%s secret_fp=%s session_keys=%s",
+        config.INSTANCE_ID,
+        config.SECRET_KEY_FP,
+        sorted(request.session.keys()),
+    )
     return templates.TemplateResponse(request, "linking.html", {})
 
 
@@ -52,7 +69,21 @@ async def poll(
     sess = request.session
     pending = sess.get("pending")
     client_id = sess.get("client_id")
+    log.info(
+        "poll instance=%s secret_fp=%s session_keys=%s has_pending=%s has_client=%s",
+        config.INSTANCE_ID,
+        config.SECRET_KEY_FP,
+        sorted(sess.keys()),
+        bool(pending),
+        bool(client_id),
+    )
     if not pending or not client_id:
+        log.warning(
+            "poll empty session -> redirect home. instance=%s secret_fp=%s keys=%s",
+            config.INSTANCE_ID,
+            config.SECRET_KEY_FP,
+            sorted(sess.keys()),
+        )
         return _hx_redirect("/")
 
     token = await plex.poll_pin(client_id, pending["pin_id"])

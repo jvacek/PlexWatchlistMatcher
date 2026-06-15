@@ -8,6 +8,8 @@ import pathlib
 os.environ.pop("DATABASE_URL", None)
 os.environ.setdefault("DB_URL", "sqlite:///./data/test.db")
 os.environ.setdefault("SECRET_KEY", "test-secret")
+# SECRET_KEY and FERNET_KEY are required now; supply a valid Fernet key for tests.
+os.environ.setdefault("FERNET_KEY", "s6XG2urj_gMMq5Ljmd_r9RXg2iV1nbo8JrdOqz4Wy_M=")
 os.environ.setdefault("BASE_URL", "http://testserver")
 
 _db = pathlib.Path("./data/test.db")
