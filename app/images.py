@@ -33,7 +33,7 @@ async def img(room: str, src: str, session: Session = Depends(get_session)):
         )
     ).first()
     token = config.decrypt(p.token_enc) if p else None
-    client_id = p.client_id if p else "watchlist-compare"
+    client_id = p.client_id if p else "plex-watchlist-matcher"
 
     try:
         content, content_type = await plex.fetch_image(client_id, token, src)

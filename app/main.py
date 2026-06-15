@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Watchlist Compare", lifespan=lifespan)
+app = FastAPI(title="Plex Watchlist Matcher", lifespan=lifespan)
 app.add_middleware(
     SessionMiddleware,
     secret_key=config.SECRET_KEY,

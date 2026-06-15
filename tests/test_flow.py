@@ -15,7 +15,7 @@ def test_landing_page_renders():
     client = TestClient(app)
     r = client.get("/")
     assert r.status_code == 200
-    assert "Watchlist Compare" in r.text
+    assert "Plex Watchlist Matcher" in r.text
 
 
 @respx.mock(assert_all_mocked=False, assert_all_called=False)

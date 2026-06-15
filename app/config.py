@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-APP_PRODUCT = "Watchlist Compare"
+APP_PRODUCT = "Plex Watchlist Matcher"
 APP_VERSION = "0.1.0"
 
 # Absolute base URL of this app. Used to build the Plex OAuth forwardUrl, so it

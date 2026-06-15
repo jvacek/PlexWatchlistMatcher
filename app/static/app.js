@@ -145,7 +145,7 @@
       if (input && navigator.share) {
         navigator
           .share({
-            title: "Watchlist Compare",
+            title: "Plex Watchlist Matcher",
             text: "Compare our Plex watchlists — join my room:",
             url: input.value,
           })

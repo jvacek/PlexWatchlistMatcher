@@ -1,4 +1,4 @@
-# Watchlist Compare
+# Plex Watchlist Matcher
 
 Compare Plex watchlists with friends. One person signs in with Plex and gets a
 shareable link; friends open it, sign in with their own Plex accounts, and the
